@@ -113,20 +113,22 @@ app.delete("/auth", async (c) => {
     throw "Invalid token";
   }
 
-  const revokeResult = await fetch("https://api.akahu.io/v1/token", {
+  const response = await fetch("https://api.akahu.io/v1/token", {
     headers: {
       Authorization: `Bearer ${akahu_user_token}`,
       "X-Akahu-ID": c.env.AKAHU_APP_TOKEN,
     },
     method: "DELETE",
-  }).then((res) => res.json());
+  });
+
+  const deleteResult = await response.json();
 
   await Promise.all([
     c.env.KV_CENT_TO_AKAHU.delete(cent_token),
     c.env.KV_AKAHU_TO_CENT.delete(akahu_user_token),
   ]);
 
-  return c.json(revokeResult);
+  return c.json(deleteResult, response.status);
 });
 
 // Auth middleware for /sync/* routes
@@ -154,14 +156,16 @@ sync.use("*", async (c, next) => {
 sync.get("/accounts", async (c) => {
   const akahu_user_token = c.get("akahu_user_token");
 
-  const accountsResult = await fetch("https://api.akahu.io/v1/accounts", {
+  const response = await fetch("https://api.akahu.io/v1/accounts", {
     headers: {
       Authorization: `Bearer ${akahu_user_token}`,
       "X-Akahu-ID": c.env.AKAHU_APP_TOKEN,
     },
-  }).then((res) => res.json());
+  });
 
-  return c.json(accountsResult);
+  const accountsResult = await response.json();
+
+  return c.json(accountsResult, response.status);
 });
 
 sync.get("/transactions", async (c) => {
@@ -177,7 +181,7 @@ sync.get("/transactions", async (c) => {
 
   const akahu_user_token = c.get("akahu_user_token");
 
-  const transactionsResult = await fetch(
+  const response = await fetch(
     `https://api.akahu.io/v1/transactions?${qs.stringify(queryParams)}`,
     {
       headers: {
@@ -185,9 +189,11 @@ sync.get("/transactions", async (c) => {
         "X-Akahu-ID": c.env.AKAHU_APP_TOKEN,
       },
     }
-  ).then((res) => res.json());
+  );
 
-  return c.json(transactionsResult);
+  const transactionsResult = await response.json();
+
+  return c.json(transactionsResult, response.status);
 });
 
 app.route("/sync", sync);
@@ -199,8 +205,7 @@ app.onError((err, c) => {
 });
 
 app.notFound((c) => {
-  c.status(404);
-  return c.json({ message: "Not found" });
+  return c.json({ message: "Not found" }, 404);
 });
 
 export default app;
